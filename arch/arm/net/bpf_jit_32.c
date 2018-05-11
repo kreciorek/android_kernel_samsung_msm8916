@@ -632,52 +632,72 @@ load_ind:
 			emit_mov_i(r_scratch, k, ctx);
 			emit(ARM_MUL(r_A, r_A, r_scratch), ctx);
 			break;
-		case BPF_S_ALU_MUL_X:
-			update_on_xread(ctx);
-			emit(ARM_MUL(r_A, r_A, r_X), ctx);
-			break;
-		case BPF_S_ALU_DIV_K:
-			if (k == 1)
-				break;
-			emit_mov_i(r_scratch, k, ctx);
-			emit_udiv(r_A, r_A, r_scratch, ctx);
-			break;
-		case BPF_S_ALU_DIV_X:
-			update_on_xread(ctx);
-			emit(ARM_CMP_I(r_X, 0), ctx);
-			emit_err_ret(ARM_COND_EQ, ctx);
-			emit_udiv(r_A, r_A, r_X, ctx);
-			break;
-		case BPF_S_ALU_OR_K:
-			/* A |= K */
-			OP_IMM3(ARM_ORR, r_A, r_A, k, ctx);
-			break;
-		case BPF_S_ALU_OR_X:
-			update_on_xread(ctx);
-			emit(ARM_ORR_R(r_A, r_A, r_X), ctx);
-			break;
-		case BPF_S_ALU_XOR_K:
-			/* A ^= K; */
-			OP_IMM3(ARM_EOR, r_A, r_A, k, ctx);
-			break;
-		case BPF_S_ANC_ALU_XOR_X:
-		case BPF_S_ALU_XOR_X:
-			/* A ^= X */
-			update_on_xread(ctx);
-			emit(ARM_EOR_R(r_A, r_A, r_X), ctx);
-			break;
-		case BPF_S_ALU_AND_K:
-			/* A &= K */
-			OP_IMM3(ARM_AND, r_A, r_A, k, ctx);
-			break;
-		case BPF_S_ALU_AND_X:
-			update_on_xread(ctx);
-			emit(ARM_AND_R(r_A, r_A, r_X), ctx);
-			break;
-		case BPF_S_ALU_LSH_K:
-			if (unlikely(k > 31))
-				return -1;
-			emit(ARM_LSL_I(r_A, r_A, k), ctx);
+		}
+		emit_udivmod(rd, rd, rt, ctx, BPF_OP(code));
+		if (dstk)
+			emit(ARM_STR_I(rd, ARM_SP, STACK_VAR(dst_lo)), ctx);
+		emit_a32_mov_i(dst_hi, 0, dstk, ctx);
+		break;
+	case BPF_ALU64 | BPF_DIV | BPF_K:
+	case BPF_ALU64 | BPF_DIV | BPF_X:
+	case BPF_ALU64 | BPF_MOD | BPF_K:
+	case BPF_ALU64 | BPF_MOD | BPF_X:
+		goto notyet;
+	/* dst = dst >> imm */
+	/* dst = dst << imm */
+	case BPF_ALU | BPF_RSH | BPF_K:
+	case BPF_ALU | BPF_LSH | BPF_K:
+		if (unlikely(imm > 31))
+			return -EINVAL;
+		if (imm)
+			emit_a32_alu_i(dst_lo, imm, dstk, ctx, BPF_OP(code));
+		emit_a32_mov_i(dst_hi, 0, dstk, ctx);
+		break;
+	/* dst = dst << imm */
+	case BPF_ALU64 | BPF_LSH | BPF_K:
+		if (unlikely(imm > 63))
+			return -EINVAL;
+		emit_a32_lsh_i64(dst, dstk, imm, ctx);
+		break;
+	/* dst = dst >> imm */
+	case BPF_ALU64 | BPF_RSH | BPF_K:
+		if (unlikely(imm > 63))
+			return -EINVAL;
+		emit_a32_lsr_i64(dst, dstk, imm, ctx);
+		break;
+	/* dst = dst << src */
+	case BPF_ALU64 | BPF_LSH | BPF_X:
+		emit_a32_lsh_r64(dst, src, dstk, sstk, ctx);
+		break;
+	/* dst = dst >> src */
+	case BPF_ALU64 | BPF_RSH | BPF_X:
+		emit_a32_lsr_r64(dst, src, dstk, sstk, ctx);
+		break;
+	/* dst = dst >> src (signed) */
+	case BPF_ALU64 | BPF_ARSH | BPF_X:
+		emit_a32_arsh_r64(dst, src, dstk, sstk, ctx);
+		break;
+	/* dst = dst >> imm (signed) */
+	case BPF_ALU64 | BPF_ARSH | BPF_K:
+		if (unlikely(imm > 63))
+			return -EINVAL;
+		emit_a32_arsh_i64(dst, dstk, imm, ctx);
+		break;
+	/* dst = ~dst */
+	case BPF_ALU | BPF_NEG:
+		emit_a32_alu_i(dst_lo, 0, dstk, ctx, BPF_OP(code));
+		emit_a32_mov_i(dst_hi, 0, dstk, ctx);
+		break;
+	/* dst = ~dst (64 bit) */
+	case BPF_ALU64 | BPF_NEG:
+		emit_a32_neg64(dst, dstk, ctx);
+		break;
+	/* dst = dst * src/imm */
+	case BPF_ALU64 | BPF_MUL | BPF_X:
+	case BPF_ALU64 | BPF_MUL | BPF_K:
+		switch (BPF_SRC(code)) {
+		case BPF_X:
+			emit_a32_mul_r64(dst, src, dstk, sstk, ctx);
 			break;
 		case BPF_S_ALU_LSH_X:
 			update_on_xread(ctx);
