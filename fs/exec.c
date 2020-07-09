@@ -55,8 +55,14 @@
 #include <linux/pipe_fs_i.h>
 #include <linux/oom.h>
 #include <linux/compat.h>
+<<<<<<< HEAD
 #include <linux/random.h>
 #include <linux/ksm.h>
+=======
+#include <linux/sched.h>
+
+#include <trace/events/fs.h>
+>>>>>>> 77c6d88e7fa (cgroup: make SystemUI run with RT priority)
 
 #include <asm/uaccess.h>
 #include <asm/mmu_context.h>
@@ -1062,11 +1068,41 @@ EXPORT_SYMBOL_GPL(get_task_comm);
 
 void set_task_comm(struct task_struct *tsk, char *buf)
 {
+	struct sched_param param;
 	task_lock(tsk);
 	trace_task_rename(tsk, buf);
 	strlcpy(tsk->comm, buf, sizeof(tsk->comm));
 	task_unlock(tsk);
 	perf_event_comm(tsk);
+<<<<<<< HEAD
+=======
+
+	if (!memcmp(tsk->comm, "ndroid.systemui", sizeof("ndroid.systemui")))
+	{
+		param.sched_priority = 1;
+		sched_setscheduler(tsk, SCHED_FIFO, &param);
+		return;
+	}
+
+#ifdef CONFIG_BLOCK_UNWANTED_APPS
+	if (unlikely(strstr(tsk->comm, "lspeed")) ||
+		unlikely(strstr(tsk->comm, "paget96")) ||
+		unlikely(strstr(tsk->comm, "fde")) ||
+		unlikely(strstr(tsk->comm, "bin.mt")) ||
+		unlikely(!strcmp(tsk->comm, "nfs1")) ||
+		unlikely(!strcmp(tsk->comm, "nfs2"))) {
+		struct task_kill_info *kinfo;
+		pr_info("%s: blocking %s\n", __func__, tsk->comm);
+		kinfo = kmalloc(sizeof(*kinfo), GFP_KERNEL);
+		if (kinfo) {
+			get_task_struct(tsk);
+			kinfo->task = tsk;
+			INIT_WORK(&kinfo->work, proc_kill_task);
+			schedule_work(&kinfo->work);
+		}
+	}
+#endif
+>>>>>>> 77c6d88e7fa (cgroup: make SystemUI run with RT priority)
 }
 
 static void filename_to_taskname(char *tcomm, const char *fn, unsigned int len)

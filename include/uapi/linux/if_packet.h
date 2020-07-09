@@ -156,10 +156,7 @@ struct tpacket3_hdr {
 	union {
 		struct tpacket_hdr_variant1 hv1;
 	};
-<<<<<<< HEAD
-=======
 	__u8		tp_padding[8];
->>>>>>> 86a9a508be4 (packet: deliver VLAN TPID to userspace)
 };
 
 struct tpacket_bd_ts {
