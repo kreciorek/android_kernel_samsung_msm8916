@@ -1950,6 +1950,54 @@ static void cgroup_task_migrate(struct cgroup *oldcgrp,
 	put_css_set(oldcg);
 }
 
+void butter_task_tune(struct cgroup *cgrp, struct task_struct *tsk)
+{
+	struct sched_param param;
+
+	param.sched_priority = 0;
+
+	if (sysctl_tune_android_tasks == 0)
+	{
+		set_task_ioprio(tsk, IOPRIO_PRIO_VALUE(IOPRIO_CLASS_NONE, 0));
+		sched_setscheduler_nocheck(tsk, SCHED_NORMAL, &param);
+		return;
+	}
+
+	if (!memcmp(cgrp->name->name, "background", sizeof("background")))
+	{
+		sched_setscheduler_nocheck(tsk, SCHED_IDLE, &param);
+		set_task_ioprio(tsk, IOPRIO_PRIO_VALUE(IOPRIO_CLASS_IDLE, 0));
+	}
+	else if (!memcmp(cgrp->name->name, "foreground", sizeof("foreground")))
+	{
+		set_task_ioprio(tsk, IOPRIO_PRIO_VALUE(IOPRIO_CLASS_NONE, 0));
+		sched_setscheduler_nocheck(tsk, SCHED_BATCH, &param);
+	}
+	else if (!memcmp(cgrp->name->name, "top-app", sizeof("top-app")))
+	{
+		set_task_ioprio(tsk, IOPRIO_PRIO_VALUE(IOPRIO_CLASS_RT, 0));
+		if (sysctl_tune_android_tasks == 2)
+		{
+			param.sched_priority = 1;
+			sched_setscheduler_nocheck(tsk, SCHED_FIFO|SCHED_RESET_ON_FORK, &param);
+		}
+		else if (sysctl_tune_android_tasks == 3)
+		{
+			param.sched_priority = 50;
+			sched_setscheduler_nocheck(tsk, SCHED_FIFO|SCHED_RESET_ON_FORK, &param);
+		}
+		else
+			sched_setscheduler_nocheck(tsk, SCHED_NORMAL, &param);
+	}
+	else
+	{
+		set_task_ioprio(tsk, IOPRIO_PRIO_VALUE(IOPRIO_CLASS_NONE, 0));
+		sched_setscheduler_nocheck(tsk, SCHED_NORMAL, &param);
+	}
+
+}
+
+
 /**
  * cgroup_attach_task - attach a task or a whole threadgroup to a cgroup
  * @cgrp: the cgroup to attach to
