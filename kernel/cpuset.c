@@ -2659,10 +2659,10 @@ int proc_cpuset_show(struct seq_file *m, void *unused_v)
 		goto out_free;
 
 	rcu_read_lock();
-	css = task_subsys_state(tsk, cpuset_subsys_id);
-	retval = cgroup_path(css->cgroup, buf, PAGE_SIZE);
+	css = task_css(tsk, cpuset_cgrp_id);
+	retval = cgroup_path(css->cgroup, buf, PATH_MAX);
 	rcu_read_unlock();
-	if (retval < 0)
+	if (retval >= PATH_MAX)
 		goto out_put_task;
 	seq_puts(m, buf);
 	seq_putc(m, '\n');
