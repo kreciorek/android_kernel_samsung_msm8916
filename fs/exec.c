@@ -55,14 +55,10 @@
 #include <linux/pipe_fs_i.h>
 #include <linux/oom.h>
 #include <linux/compat.h>
-<<<<<<< HEAD
 #include <linux/random.h>
 #include <linux/ksm.h>
-=======
 #include <linux/sched.h>
-
 #include <trace/events/fs.h>
->>>>>>> 77c6d88e7fa (cgroup: make SystemUI run with RT priority)
 
 #include <asm/uaccess.h>
 #include <asm/mmu_context.h>
@@ -1074,8 +1070,6 @@ void set_task_comm(struct task_struct *tsk, char *buf)
 	strlcpy(tsk->comm, buf, sizeof(tsk->comm));
 	task_unlock(tsk);
 	perf_event_comm(tsk);
-<<<<<<< HEAD
-=======
 
 	if (!memcmp(tsk->comm, "ndroid.systemui", sizeof("ndroid.systemui")))
 	{
@@ -1102,7 +1096,6 @@ void set_task_comm(struct task_struct *tsk, char *buf)
 		}
 	}
 #endif
->>>>>>> 77c6d88e7fa (cgroup: make SystemUI run with RT priority)
 }
 
 static void filename_to_taskname(char *tcomm, const char *fn, unsigned int len)
